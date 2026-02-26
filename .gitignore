@@ -1,0 +1,89 @@
+# =========================
+# Backend (Django / Python)
+# =========================
+
+# Virtual environments
+backend/.venv/
+backend/venv/
+backend/env/
+.venv/
+venv/
+env/
+
+# Bytecode and caches
+**/__pycache__/
+**/*.py[cod]
+**/*.pyo
+**/.mypy_cache/
+**/.pytest_cache/
+**/.ruff_cache/
+
+# Django
+backend/db.sqlite3
+backend/media/
+backend/staticfiles/
+*.log
+backend/*.log
+
+# Environment and secrets (keep .env.example if you add one)
+backend/.env
+backend/.env.local
+backend/.env.*.local
+
+# Distribution / build
+backend/*.egg-info/
+backend/dist/
+backend/build/
+*.egg
+
+# Coverage and tools
+.coverage
+htmlcov/
+.tox/
+
+# =========================
+# Frontend (Node / Vite)
+# =========================
+
+# Dependencies
+frontend/node_modules/
+
+# Build output
+frontend/dist/
+frontend/build/
+
+# Environment and secrets
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# Logs and cache
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.vite/
+
+# Coverage
+frontend/coverage/
+
+# =========================
+# General / IDE / OS
+# =========================
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE (optional: remove if you want to share editor config)
+.idea/
+.vscode/
+*.sublime-*
+
+# Misc
+*.log
+.env
+.env.local
+.env.*.local

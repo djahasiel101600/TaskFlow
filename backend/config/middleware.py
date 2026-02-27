@@ -31,8 +31,9 @@ class JWTQueryAuthMiddleware:
                 token = token_list[0].strip()
                 if token:
                     user = await get_user_from_token(token)
-                    if user:
-                        scope["user"] = user
+                    scope["user"] = user if user else AnonymousUser()
+                # else: leave scope["user"] as set by AuthMiddlewareStack
+            # When no token param, scope["user"] stays from AuthMiddlewareStack (e.g. AnonymousUser)
         return await self.inner(scope, receive, send)
 
 

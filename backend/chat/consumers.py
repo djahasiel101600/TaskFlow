@@ -43,8 +43,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
 class NotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.user = self.scope.get("user")
-        if not self.user or not self.user.is_authenticated:
-            await self.close()
+        if not self.user or not getattr(self.user, "is_authenticated", False):
+            await self.close(code=4401, reason="Authentication required")
             return
         self.room_group_name = f"notifications_{self.user.id}"
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)

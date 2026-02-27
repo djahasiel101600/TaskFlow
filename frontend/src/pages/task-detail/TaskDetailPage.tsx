@@ -5,6 +5,7 @@ import type { Task } from '@/entities/task/model/types'
 import { Card, CardContent, CardHeader } from '@/shared/ui/card'
 import { Button } from '@/shared/ui/button'
 import { Badge } from '@/shared/ui/badge'
+import { Input } from '@/shared/ui/input'
 import { format } from 'date-fns'
 import {
   ArrowLeft,
@@ -21,6 +22,7 @@ import {
   Link as LinkIcon,
   GitBranch,
   Circle,
+  Bell,
 } from 'lucide-react'
 import { useAuthStore } from '@/shared/store/auth'
 import {
@@ -41,6 +43,7 @@ import {
   DialogTitle,
 } from '@/shared/ui/dialog'
 import { cn } from '@/shared/lib/utils'
+import { buildWebSocketUrl } from '@/shared/lib/websocket'
 
 const STATUSES: TaskStatus[] = ['pending', 'ongoing', 'finished', 'cancelled']
 
@@ -114,11 +117,7 @@ export function TaskDetailPage() {
   const accessToken = useAuthStore((s) => s.accessToken)
   useEffect(() => {
     if (!id || !accessToken) return
-    const apiOrigin = import.meta.env.VITE_API_URL
-      ? new URL(import.meta.env.VITE_API_URL).origin
-      : (import.meta.env.DEV ? 'http://127.0.0.1:9000' : window.location.origin)
-    const wsOrigin = apiOrigin.replace(/^http/, 'ws')
-    const wsUrl = `${wsOrigin}/ws/task-comments/${id}/?token=${encodeURIComponent(accessToken)}`
+    const wsUrl = buildWebSocketUrl(`/ws/task-comments/${id}/`, { token: accessToken })
     const ws = new WebSocket(wsUrl)
     ws.onmessage = (event) => {
       try {
@@ -168,6 +167,15 @@ export function TaskDetailPage() {
     try {
       await tasksApi.update(task.id, { priority })
       setTask((prev) => (prev ? { ...prev, priority } : null))
+    } catch {}
+  }
+
+  const handleReminderChange = async (value: string | null) => {
+    if (!task) return
+    const reminder_datetime = value ? new Date(value).toISOString() : null
+    try {
+      await tasksApi.update(task.id, { reminder_datetime })
+      setTask((prev) => (prev ? { ...prev, reminder_datetime } : null))
     } catch {}
   }
 
@@ -360,6 +368,44 @@ export function TaskDetailPage() {
               <span className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
                 Deadline: {format(new Date(task.deadline), 'PPp')}
+              </span>
+            )}
+            {task.reminder_datetime && !canEdit && (
+              <span className="flex items-center gap-1">
+                <Bell className="h-4 w-4" />
+                Reminder: {format(new Date(task.reminder_datetime), 'PPp')}
+              </span>
+            )}
+            {canEdit && (
+              <span className="flex items-center gap-2 flex-wrap">
+                <label className="flex items-center gap-1.5 text-muted-foreground">
+                  <Bell className="h-4 w-4" />
+                  Reminder:
+                </label>
+                <Input
+                  type="datetime-local"
+                  className="h-8 w-44 text-sm"
+                  value={
+                    task.reminder_datetime
+                      ? format(new Date(task.reminder_datetime), "yyyy-MM-dd'T'HH:mm")
+                      : ''
+                  }
+                  onChange={(e) => {
+                    const v = e.target.value
+                    handleReminderChange(v || null)
+                  }}
+                />
+                {task.reminder_datetime && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-muted-foreground"
+                    onClick={() => handleReminderChange(null)}
+                  >
+                    Clear
+                  </Button>
+                )}
               </span>
             )}
             <div className="flex flex-wrap items-center gap-2">
@@ -599,7 +645,7 @@ export function TaskDetailPage() {
                       <Circle className="h-2 w-2 fill-current" />
                     </span>
                     <div className="flex-1 min-w-0 pt-0.5">
-                      <p className="text-sm font-medium">
+                      <div className="text-sm font-medium">
                         {entry.from_status == null ? (
                           <>Task created with status <Badge variant="secondary" className="ml-1">{entry.to_status}</Badge></>
                         ) : (
@@ -609,7 +655,7 @@ export function TaskDetailPage() {
                             <Badge variant="secondary">{entry.to_status}</Badge>
                           </>
                         )}
-                      </p>
+                      </div>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {entry.changed_by?.username ?? 'System'}
                         {' · '}

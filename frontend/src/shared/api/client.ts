@@ -1,10 +1,13 @@
 import axios, { type AxiosError } from 'axios'
 import { useAuthStore } from '@/shared/store/auth'
 
-const API_BASE = import.meta.env.VITE_API_URL || ''
+// In the browser use relative URLs so all requests go through the Vite dev proxy (same origin).
+// Only use VITE_API_URL for SSR or when window is missing.
+const API_BASE =
+  typeof window !== 'undefined' ? '' : (import.meta.env.VITE_API_URL || '')
 
 export const apiClient = axios.create({
-  baseURL: API_BASE + '/api',
+  baseURL: API_BASE ? API_BASE + '/api' : '/api',
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
 })

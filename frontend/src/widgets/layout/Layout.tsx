@@ -19,6 +19,7 @@ import {
 import type { NotificationItem } from '@/shared/api/notifications'
 import { playNotificationSound, unlockNotificationSound } from '@/shared/lib/notificationSound'
 import { tasksApi } from '@/shared/api/tasks'
+import { buildWebSocketUrl } from '@/shared/lib/websocket'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -36,7 +37,9 @@ export function Layout() {
   const unreadCount = useNotificationsStore((s) => s.unreadCount)
   const fetchNotifications = useNotificationsStore((s) => s.fetch)
   const accessToken = useAuthStore((s) => s.accessToken)
+  const doRefresh = useAuthStore((s) => s.doRefresh)
   const wsRef = useRef<WebSocket | null>(null)
+  const wsRetryRef = useRef(false)
   const [overdueCount, setOverdueCount] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -95,15 +98,12 @@ export function Layout() {
 
   useEffect(() => {
     if (!user || !accessToken) return
-    const apiOrigin = import.meta.env.VITE_API_URL
-      ? new URL(import.meta.env.VITE_API_URL).origin
-      : (import.meta.env.DEV ? 'http://127.0.0.1:8000' : window.location.origin)
-    const wsOrigin = apiOrigin.replace(/^http/, 'ws')
-    const wsUrl = `${wsOrigin}/ws/notifications/?token=${encodeURIComponent(accessToken)}`
+    const wsUrl = buildWebSocketUrl('/ws/notifications/', { token: accessToken })
     let cancelled = false
     const ws = new WebSocket(wsUrl)
     wsRef.current = ws
     ws.onopen = () => {
+      wsRetryRef.current = false
       if (import.meta.env.DEV) console.debug('[Notifications] WebSocket connected')
     }
     ws.onmessage = (event) => {
@@ -139,9 +139,18 @@ export function Layout() {
         // ignore
       }
     }
-    ws.onclose = () => {
+    ws.onclose = (event) => {
       wsRef.current = null
-      if (import.meta.env.DEV) console.debug('[Notifications] WebSocket closed')
+      if (import.meta.env.DEV) console.debug('[Notifications] WebSocket closed', event.code, event.reason)
+      // Server closed due to auth (4401) or connection failed before open (1006) – try refresh once and reconnect
+      if ((event.code === 4401 || event.code === 1006) && !wsRetryRef.current) {
+        wsRetryRef.current = true
+        doRefresh().then((ok) => {
+          if (ok) {
+            if (import.meta.env.DEV) console.debug('[Notifications] Token refreshed, will reconnect')
+          }
+        })
+      }
     }
     ws.onerror = () => {}
     return () => {
@@ -151,7 +160,7 @@ export function Layout() {
         wsRef.current = null
       }
     }
-  }, [user, accessToken])
+  }, [user, accessToken, doRefresh])
 
   const handleLogout = () => {
     logout()

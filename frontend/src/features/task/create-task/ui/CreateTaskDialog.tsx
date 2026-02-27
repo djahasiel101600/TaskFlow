@@ -39,6 +39,7 @@ export function CreateTaskDialog({ open, onOpenChange, onSuccess, initialStatus 
   const [status, setStatus] = useState<TaskStatus>(initialStatus ?? 'pending')
   const [assigneeIds, setAssigneeIds] = useState<number[]>([])
   const [deadline, setDeadline] = useState('')
+  const [reminderDatetime, setReminderDatetime] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [users, setUsers] = useState<{ id: number; username: string }[]>([])
@@ -73,6 +74,7 @@ export function CreateTaskDialog({ open, onOpenChange, onSuccess, initialStatus 
       setStatus(initialStatus ?? 'pending')
       setAssigneeIds([])
       setDeadline('')
+      setReminderDatetime('')
       setError('')
     }
     onOpenChange(o)
@@ -98,6 +100,7 @@ export function CreateTaskDialog({ open, onOpenChange, onSuccess, initialStatus 
         status,
         assignees: assigneeIds.length ? assigneeIds : undefined,
         deadline: deadline || null,
+        reminder_datetime: reminderDatetime ? new Date(reminderDatetime).toISOString() : null,
       })
       onSuccess()
       handleOpen(false)
@@ -211,6 +214,17 @@ export function CreateTaskDialog({ open, onOpenChange, onSuccess, initialStatus 
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="reminder">Reminder</Label>
+            <Input
+              id="reminder"
+              type="datetime-local"
+              value={reminderDatetime}
+              onChange={(e) => setReminderDatetime(e.target.value)}
+              title="When to send a reminder notification (optional)"
+            />
+            <p className="text-xs text-muted-foreground">Optional. You’ll get a notification at this time.</p>
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>

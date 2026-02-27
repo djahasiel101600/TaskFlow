@@ -8,3 +8,8 @@ channels-redis>=4.2
 daphne>=4.0
 Pillow>=10.0
 python-decouple>=3.8
+python-dotenv>=1.0
+psycopg2-binary>=2.9
+celery[redis]>=5.3
+redis>=5.0
+

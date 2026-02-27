@@ -10,6 +10,7 @@ import { CreateChannelDialog } from '@/features/chat/create-channel'
 import { useAuthStore } from '@/shared/store/auth'
 import { Avatar } from '@/shared/ui/avatar'
 import { cn } from '@/shared/lib/utils'
+import { buildWebSocketUrl } from '@/shared/lib/websocket'
 
 function getChannelDisplayName(ch: ChannelItem, currentUserId: number | undefined): string {
   if (ch.channel_type === 'direct' && ch.members_detail?.length) {
@@ -88,11 +89,7 @@ export function ChatPage() {
 
   useEffect(() => {
     if (!selectedId) return
-    const apiOrigin = import.meta.env.VITE_API_URL
-      ? new URL(import.meta.env.VITE_API_URL).origin
-      : (import.meta.env.DEV ? 'http://127.0.0.1:8000' : window.location.origin)
-    const wsOrigin = apiOrigin.replace(/^http/, 'ws')
-    const wsUrl = `${wsOrigin}/ws/chat/${selectedId}/`
+    const wsUrl = buildWebSocketUrl(`/ws/chat/${selectedId}/`)
     let cancelled = false
     let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
     const connect = () => {

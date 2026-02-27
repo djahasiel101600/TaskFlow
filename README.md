@@ -79,6 +79,55 @@ npm run dev
 - **Backend:** Optional `DEBUG`, `DJANGO_SECRET_KEY`, `ALLOWED_HOSTS` (defaults work for local dev).
 - **Frontend:** Optional `VITE_API_URL` (default `''` uses Vite proxy to backend). Proxy in `vite.config.ts` sends `/api` and `/media` to `http://127.0.0.1:8000`.
 
+### Reminders & deadlines (Celery + Redis)
+
+Task reminders (`reminder_datetime`) and deadline notifications are sent by a **Celery** periodic task that runs every minute. **Redis** is used as the broker and result backend.
+
+1. **Install and run Redis** (if not already running):
+   - Windows: [Redis for Windows](https://github.com/microsoftarchive/redis/releases) or WSL; or use a cloud Redis (e.g. Upstash, Redis Cloud).
+   - Linux/macOS: `redis-server` or `sudo systemctl start redis`.
+   - Default connection: `redis://localhost:6379/0`. Set `REDIS_URL` or `CELERY_BROKER_URL` in `backend/.env` if different.
+
+2. **Install backend deps** (includes `celery[redis]`, `redis`):
+   ```bash
+   cd backend && pip install -r requirements.txt
+   ```
+
+3. **Run Celery worker** (processes the reminder/deadline task):
+   ```bash
+   cd backend
+   celery -A config worker -l info
+   ```
+
+4. **Run Celery Beat** (schedules the task every minute):
+   ```bash
+   cd backend
+   celery -A config beat -l info
+   ```
+
+You can run worker and beat in two terminals, or run both in one with:
+`celery -A config worker -B -l info` (worker + embedded beat; fine for dev).
+
+On **Windows**, the config forces the `solo` worker pool to avoid prefork handle errors; use the same commands.
+
+
+
+**Run Celery (and Redis) in Docker**
+
+From the project root, with `backend/.env` containing your DB and other settings:
+
+```bash
+docker compose up -d redis celery celery-beat
+```
+
+- **redis** — Redis server (broker and channel layer).
+- **celery** — Worker; runs `tasks.check_reminders_and_deadlines` when Beat sends it.
+- **celery-beat** — Scheduler; sends the task every minute.
+
+Compose overrides `REDIS_URL` / `CELERY_BROKER_URL` so the containers use the `redis` service. To run only Redis and keep Celery on the host: `docker compose up -d redis`.
+
+When a task’s `reminder_datetime` or `deadline` is in the past, the next run of the periodic task creates a notification for the assignee (or creator). The management command `python manage.py check_reminders_and_deadlines` still works for manual or cron-based runs; with Celery, Beat replaces the need for cron.
+
 ## PRD verification
 
 See **[PRD-Verification.md](./PRD-Verification.md)** for a requirement-by-requirement check against the Project Requirements Document and a list of partial gaps (e.g. reminder/deadline scheduled triggers, chat file attachments, sound alerts).

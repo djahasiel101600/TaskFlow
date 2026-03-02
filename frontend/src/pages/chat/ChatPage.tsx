@@ -20,7 +20,7 @@ function getChannelDisplayName(ch: ChannelItem, currentUserId: number | undefine
   return ch.name || `Channel ${ch.id}`
 }
 
-function getChannelSubtitle(ch: ChannelItem, currentUserId: number | undefined): string | null {
+function getChannelSubtitle(ch: ChannelItem, _currentUserId: number | undefined): string | null {
   const last = ch.last_message
   if (!last) return null
   const preview = last.content?.slice(0, 40) ?? ''

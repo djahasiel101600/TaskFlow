@@ -1,11 +1,37 @@
-# Redis for Celery (reminders & deadline notifications)
+# TaskFlow — full stack (Postgres, Redis, Django/Daphne, Celery, Celery Beat, Frontend)
+#
 # Usage:
-#   docker compose up -d redis           # Redis only (use with local Celery)
-#   docker compose up -d redis celery celery-beat   # Redis + Celery in Docker
-#   docker compose down
-# Backend .env: REDIS_URL=redis://localhost:6379/0 (when running Celery locally)
+#   docker compose up -d                    # build and run everything
+#   docker compose up -d --build            # rebuild images
+#   docker compose down                     # stop and remove containers
+#   docker compose down -v                  # also remove volumes (DB data)
+#
+# First run: run migrations and create roles/superuser in the backend container:
+#   docker compose exec backend python manage.py migrate
+#   docker compose exec backend python manage.py create_roles
+#   docker compose exec backend python manage.py createsuperuser
+#
+# App: http://localhost:8080  (frontend nginx; proxies /api, /media, /ws to backend)
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: taskflow-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-taskflow}
+      POSTGRES_USER: ${POSTGRES_USER:-taskflow}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-taskflow}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-taskflow} -d ${POSTGRES_DB:-taskflow}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     container_name: taskflow-redis
@@ -13,27 +39,65 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: taskflow-backend
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-taskflow}
+      DB_USER: ${POSTGRES_USER:-taskflow}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-taskflow}
+      DB_SSLMODE: disable
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CHANNEL_LAYER_REDIS_URL: redis://redis:6379/1
+      ALLOWED_HOSTS: "localhost,127.0.0.1,backend"
+      FRONTEND_ORIGIN: "http://localhost:8080"
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-in-production}
+      DEBUG: ${DEBUG:-False}
+    command: daphne -b 0.0.0.0 -p 9000 config.asgi:application
+    volumes:
+      - backend_media:/app/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 
   celery:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: taskflow-celery
-    env_file:
-      - ./backend/.env
     environment:
+      DJANGO_SETTINGS_MODULE: config.settings
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-taskflow}
+      DB_USER: ${POSTGRES_USER:-taskflow}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-taskflow}
+      DB_SSLMODE: disable
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       CHANNEL_LAYER_REDIS_URL: redis://redis:6379/1
     command: celery -A config worker -l info
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -43,17 +107,37 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: taskflow-celery-beat
-    env_file:
-      - ./backend/.env
     environment:
+      DJANGO_SETTINGS_MODULE: config.settings
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-taskflow}
+      DB_USER: ${POSTGRES_USER:-taskflow}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-taskflow}
+      DB_SSLMODE: disable
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
     command: celery -A config beat -l info
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: taskflow-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
 volumes:
+  postgres_data:
   redis_data:
+  backend_media:

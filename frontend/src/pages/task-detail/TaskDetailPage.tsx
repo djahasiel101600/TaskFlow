@@ -639,7 +639,7 @@ export function TaskDetailPage() {
                 Progress timeline
               </div>
               <ul className="relative pl-5 border-l-2 border-muted space-y-4">
-                {statusHistory.map((entry, i) => (
+                {statusHistory.map((entry) => (
                   <li key={entry.id} className="relative flex gap-3">
                     <span className="absolute -left-[29px] top-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground">
                       <Circle className="h-2 w-2 fill-current" />

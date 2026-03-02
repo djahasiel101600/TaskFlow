@@ -37,6 +37,22 @@ npm run dev
 - App: http://localhost:5173/
 - Login with the superuser (or any user created in admin). Assign a **Role** to users so they have permissions (e.g. view/create/edit tasks, assign, chat).
 
+## Run with Docker (full stack)
+
+Run the entire app (Postgres, Redis, Django/Daphne, Celery, Celery Beat, frontend) anywhere with Docker:
+
+```bash
+# From project root
+cp .env.example .env   # optional: set POSTGRES_PASSWORD, SECRET_KEY, etc.
+docker compose up -d --build
+```
+
+- **App:** http://localhost:8080 (frontend; nginx proxies `/api`, `/media`, `/ws` to the backend).
+- **First run:** Create a superuser: `docker compose exec backend python manage.py createsuperuser`
+- **Stop:** `docker compose down` (add `-v` to remove DB and volumes).
+
+Services: `postgres`, `redis`, `backend` (Daphne on 9000), `celery`, `celery-beat`, `frontend` (nginx on 80 → host 8080). Migrations and `create_roles` run automatically on backend startup. To use an external database instead of the built-in Postgres, override `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_PORT`, and set `DB_SSLMODE=require` (or leave unset for Supabase) in the backend service environment.
+
 ## Project Structure
 
 ### Frontend (FSD)

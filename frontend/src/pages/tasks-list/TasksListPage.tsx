@@ -13,15 +13,34 @@ import { CreateTaskDialog } from '@/features/task/create-task'
 
 type ViewMode = 'list' | 'kanban' | 'calendar'
 
+const TASKS_VIEW_STORAGE_KEY = 'taskflow-tasks-view'
+
+function getStoredViewMode(): ViewMode {
+  if (typeof window === 'undefined') return 'list'
+  try {
+    const v = localStorage.getItem(TASKS_VIEW_STORAGE_KEY)
+    if (v === 'list' || v === 'kanban' || v === 'calendar') return v
+  } catch {}
+  return 'list'
+}
+
 export function TaskListPage() {
   const [searchParams] = useSearchParams()
   const myTasks = searchParams.get('my_tasks') === 'true'
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
-  const [view, setView] = useState<ViewMode>('list')
+  const [view, setView] = useState<ViewMode>(getStoredViewMode)
   const [search, setSearch] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [createWithStatus, setCreateWithStatus] = useState<TaskStatus | undefined>(undefined)
+
+  const handleViewChange = (value: string) => {
+    const mode = value as ViewMode
+    setView(mode)
+    try {
+      localStorage.setItem(TASKS_VIEW_STORAGE_KEY, mode)
+    } catch {}
+  }
 
   const load = async () => {
     setLoading(true)
@@ -62,7 +81,7 @@ export function TaskListPage() {
               className="pl-9 h-10 rounded-lg"
             />
           </div>
-          <Tabs value={view} onValueChange={(v) => setView(v as ViewMode)} className="shrink-0">
+          <Tabs value={view} onValueChange={handleViewChange} className="shrink-0">
             <TabsList className="rounded-xl bg-muted/80 p-1 gap-0.5 h-11">
               <TabsTrigger value="list" className="gap-2 rounded-lg data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:shadow-sm px-4">
                 <List className="h-4 w-4" /> List

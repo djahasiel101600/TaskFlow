@@ -3,7 +3,7 @@ import { useAuthStore } from '@/shared/store/auth'
 import { useNotificationsStore } from '@/shared/store/notifications'
 import { Button } from '@/shared/ui/button'
 import { cn } from '@/shared/lib/utils'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import {
   LayoutDashboard,
   ListTodo,
@@ -17,9 +17,10 @@ import {
   X,
 } from 'lucide-react'
 import type { NotificationItem } from '@/shared/api/notifications'
-import { playNotificationSound, unlockNotificationSound } from '@/shared/lib/notificationSound'
+import { playNotificationSound, unlockNotificationSound, showBrowserNotification } from '@/shared/lib/notificationSound'
 import { tasksApi } from '@/shared/api/tasks'
 import { buildWebSocketUrl } from '@/shared/lib/websocket'
+import { useAlarmStore, ALARM_REPEAT_INTERVAL } from '@/shared/store/alarms'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -42,6 +43,7 @@ export function Layout() {
   const wsRetryRef = useRef(false)
   const [overdueCount, setOverdueCount] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const activeAlarmIds = useAlarmStore((s) => s.activeAlarmIds)
 
   useEffect(() => {
     fetchNotifications()
@@ -127,7 +129,15 @@ export function Layout() {
             created_at: payload.created_at ?? new Date().toISOString(),
             extra_data: payload.extra_data ?? {},
           })
-          playNotificationSound()
+          const isReminderOrDeadline = payload.notification_type === 'reminder' || payload.notification_type === 'deadline'
+          playNotificationSound(isReminderOrDeadline)
+          if (document.hidden && isReminderOrDeadline) {
+            showBrowserNotification(payload.title, { body: payload.message ?? '' })
+          }
+          if (isReminderOrDeadline) {
+            useAlarmStore.getState().addAlarm(payload.id)
+            startAlarmIntervalIfNeeded()
+          }
           if (payload.notification_type === 'deadline') {
             tasksApi.list({ my_tasks: true }).then((res) => {
               const count = (res.results ?? []).filter((t) => t.is_overdue).length
@@ -161,6 +171,47 @@ export function Layout() {
       }
     }
   }, [user, accessToken, doRefresh])
+
+  // Repeat alarm every minute for reminder/deadline until dismissed or snoozed.
+  // Run interval only when there are active alarms; clear when none (avoids wake-ups when idle).
+  const alarmIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const startAlarmIntervalIfNeeded = useCallback(() => {
+    if (alarmIntervalRef.current != null) return
+    alarmIntervalRef.current = setInterval(() => {
+      const state = useAlarmStore.getState()
+      if (state.activeAlarmIds.length === 0) {
+        if (alarmIntervalRef.current != null) {
+          clearInterval(alarmIntervalRef.current)
+          alarmIntervalRef.current = null
+        }
+        return
+      }
+      const ids = state.getRingingIds()
+      if (ids.length === 0) return
+      const items = useNotificationsStore.getState().items
+      const byId = new Map(items.map((n) => [n.id, n]))
+      ids.forEach((nid) => {
+        const n = byId.get(nid)
+        if (!n) return
+        playNotificationSound(true)
+        if (document.hidden) showBrowserNotification(n.title, { body: n.message ?? '' })
+      })
+    }, ALARM_REPEAT_INTERVAL)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (alarmIntervalRef.current != null) {
+        clearInterval(alarmIntervalRef.current)
+        alarmIntervalRef.current = null
+      }
+    }
+  }, [])
+
+  // Start repeat interval when there are active alarms (e.g. after first alarm or when snooze expires)
+  useEffect(() => {
+    if (activeAlarmIds.length > 0) startAlarmIntervalIfNeeded()
+  }, [activeAlarmIds.length, startAlarmIntervalIfNeeded])
 
   const handleLogout = () => {
     logout()

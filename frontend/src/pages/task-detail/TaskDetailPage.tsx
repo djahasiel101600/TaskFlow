@@ -280,7 +280,7 @@ export function TaskDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div className="flex items-center justify-center min-h-[40vh] px-4">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           <p className="text-sm text-muted-foreground">Loading task…</p>
@@ -290,9 +290,9 @@ export function TaskDetailPage() {
   }
   if (!task) {
     return (
-      <div className="text-center py-16">
+      <div className="max-w-4xl mx-auto text-center py-16 px-4">
         <p className="text-muted-foreground font-medium">Task not found.</p>
-        <Button variant="link" className="mt-2" asChild>
+        <Button variant="link" className="mt-3" asChild>
           <Link to="/tasks">← Back to tasks</Link>
         </Button>
       </div>
@@ -300,14 +300,17 @@ export function TaskDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="rounded-lg shrink-0" asChild>
-          <Link to="/tasks">
+    <div className="max-w-4xl mx-auto space-y-6 px-4 sm:px-6">
+      {/* Header row: back + title + delete */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <Button variant="ghost" size="icon" className="rounded-lg shrink-0 h-9 w-9" asChild>
+          <Link to="/tasks" aria-label="Back to tasks">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <h1 className="text-2xl sm:text-3xl font-bold flex-1 min-w-0 truncate text-foreground">{task.title}</h1>
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold flex-1 min-w-0 truncate text-foreground">
+          {task.title}
+        </h1>
         {canDelete && (
           <Button variant="destructive" size="sm" className="rounded-lg shrink-0" onClick={handleDelete}>
             <Trash2 className="h-4 w-4" /> Delete
@@ -316,7 +319,7 @@ export function TaskDetailPage() {
       </div>
 
       <Card className={cn('transition-default', task.is_overdue && 'border-destructive/40')}>
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 pb-2">
           <div className="flex flex-wrap items-center gap-2">
             {canEdit && (
               <>
@@ -359,32 +362,32 @@ export function TaskDetailPage() {
             )}
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6 pt-2">
           {task.description && (
-            <p className="text-muted-foreground whitespace-pre-wrap">{task.description}</p>
+            <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{task.description}</p>
           )}
           <div className="flex flex-wrap gap-4 text-sm">
             {task.deadline && (
-              <span className="flex items-center gap-1">
-                <Calendar className="h-4 w-4" />
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <Calendar className="h-4 w-4 shrink-0" />
                 Deadline: {format(new Date(task.deadline), 'PPp')}
               </span>
             )}
             {task.reminder_datetime && !canEdit && (
-              <span className="flex items-center gap-1">
-                <Bell className="h-4 w-4" />
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <Bell className="h-4 w-4 shrink-0" />
                 Reminder: {format(new Date(task.reminder_datetime), 'PPp')}
               </span>
             )}
             {canEdit && (
               <span className="flex items-center gap-2 flex-wrap">
-                <label className="flex items-center gap-1.5 text-muted-foreground">
+                <label className="flex items-center gap-1.5 text-muted-foreground shrink-0">
                   <Bell className="h-4 w-4" />
                   Reminder:
                 </label>
                 <Input
                   type="datetime-local"
-                  className="h-8 w-44 text-sm"
+                  className="h-9 w-44 text-sm"
                   value={
                     task.reminder_datetime
                       ? format(new Date(task.reminder_datetime), "yyyy-MM-dd'T'HH:mm")
@@ -400,7 +403,7 @@ export function TaskDetailPage() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-8 text-muted-foreground"
+                    className="h-9 text-muted-foreground"
                     onClick={() => handleReminderChange(null)}
                   >
                     Clear
@@ -408,7 +411,7 @@ export function TaskDetailPage() {
                 )}
               </span>
             )}
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 w-full">
               <Users className="h-4 w-4 shrink-0" />
               {canAssign ? (
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -418,16 +421,16 @@ export function TaskDetailPage() {
                     </Badge>
                   ))}
                   <details className="relative">
-                    <summary className="list-none cursor-pointer text-sm text-primary hover:underline">
+                    <summary className="list-none cursor-pointer text-sm text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 rounded px-1 -mx-1">
                       Edit assignees
                     </summary>
-                    <div className="absolute left-0 top-full z-10 mt-1 w-56 rounded-md border bg-popover p-2 shadow-md max-h-48 overflow-auto">
+                    <div className="absolute left-0 top-full z-10 mt-1.5 w-56 rounded-lg border border-border bg-popover p-2 shadow-lg max-h-48 overflow-auto">
                       {users.map((u) => {
                         const isChecked = (task.assignees ?? []).includes(u.id)
                         return (
                           <label
                             key={u.id}
-                            className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded px-2 py-1.5"
+                            className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/50 rounded-md px-2 py-2"
                             onClick={(e) => {
                               e.preventDefault()
                               toggleAssignee(u.id)
@@ -449,32 +452,32 @@ export function TaskDetailPage() {
                   </details>
                 </div>
               ) : (
-                <span>
+                <span className="text-muted-foreground">
                   {(task.assignees_detail ?? []).length > 0
                     ? (task.assignees_detail ?? []).map((u) => u.username).join(', ')
                     : 'Unassigned'}
                 </span>
               )}
             </div>
-            <span className="text-muted-foreground">
+            <p className="text-muted-foreground text-xs pt-0.5">
               Created by {task.created_by_detail?.username ?? '—'} on{' '}
               {format(new Date(task.created_at), 'PP')}
-            </span>
+            </p>
           </div>
           {(canEdit || attachments.length > 0) && (
-            <div className="border-t pt-4 mt-4 space-y-2">
-              <div className="flex items-center gap-2 font-medium">
-                <Paperclip className="h-4 w-4" />
+            <div className="border-t border-border pt-6 mt-2 space-y-4">
+              <h3 className="flex items-center gap-2 font-medium text-foreground text-sm">
+                <Paperclip className="h-4 w-4 shrink-0" />
                 Attachments
-              </div>
-              {attachments.length > 0 && (
-                <ul className="space-y-4">
+              </h3>
+              {attachments.length > 0 ? (
+                <ul className="space-y-3">
                   {attachments.map((a) => {
                     const url = getAttachmentUrl(a)
                     const type = attachmentPreviewType(a.filename)
                     const linkUrl = type === 'pdf' && pdfBlobUrls[a.id] ? pdfBlobUrls[a.id] : url
                     return (
-                      <li key={a.id} className="rounded-lg border bg-muted/30 overflow-hidden">
+                      <li key={a.id} className="rounded-lg border border-border bg-muted/30 overflow-hidden">
                         <div className="flex items-center justify-between gap-2 p-2 text-sm">
                           <a
                             href={linkUrl}
@@ -529,7 +532,9 @@ export function TaskDetailPage() {
                     )
                   })}
                 </ul>
-              )}
+              ) : canEdit ? (
+                <p className="text-sm text-muted-foreground">No attachments yet.</p>
+              ) : null}
               <Dialog open={!!previewImageUrl} onOpenChange={(open) => !open && setPreviewImageUrl(null)}>
                 <DialogContent className="max-w-[90vw] max-h-[90vh] w-auto">
                   <DialogHeader>
@@ -545,7 +550,7 @@ export function TaskDetailPage() {
                 </DialogContent>
               </Dialog>
               {canEdit && (
-                <div>
+                <div className="pt-1">
                   <input
                     type="file"
                     className="hidden"
@@ -574,15 +579,15 @@ export function TaskDetailPage() {
           )}
 
           {(canEdit || links.length > 0) && (
-            <div className="border-t pt-4 mt-4 space-y-2">
-              <div className="flex items-center gap-2 font-medium">
-                <LinkIcon className="h-4 w-4" />
+            <div className="border-t border-border pt-6 mt-2 space-y-4">
+              <h3 className="flex items-center gap-2 font-medium text-foreground text-sm">
+                <LinkIcon className="h-4 w-4 shrink-0" />
                 Links
-              </div>
-              {links.length > 0 && (
+              </h3>
+              {links.length > 0 ? (
                 <ul className="space-y-2">
                   {links.map((l) => (
-                    <li key={l.id} className="flex items-center justify-between gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm">
+                    <li key={l.id} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2.5 text-sm">
                       <a
                         href={l.url}
                         target="_blank"
@@ -604,24 +609,26 @@ export function TaskDetailPage() {
                     </li>
                   ))}
                 </ul>
-              )}
+              ) : canEdit ? (
+                <p className="text-sm text-muted-foreground">No links yet.</p>
+              ) : null}
               {canEdit && (
                 <form onSubmit={handleAddLink} className="flex flex-wrap gap-2">
-                  <input
+                  <Input
                     type="url"
-                    placeholder="https://… (e.g. Paperless-ngx or external)"
+                    placeholder="https://…"
                     value={linkUrl}
                     onChange={(e) => setLinkUrl(e.target.value)}
-                    className="flex-1 min-w-[200px] rounded-md border bg-background px-3 py-2 text-sm"
+                    className="flex-1 min-w-[200px]"
                     disabled={linkSending}
                     required
                   />
-                  <input
+                  <Input
                     type="text"
                     placeholder="Label (optional)"
                     value={linkLabel}
                     onChange={(e) => setLinkLabel(e.target.value)}
-                    className="w-32 rounded-md border bg-background px-3 py-2 text-sm"
+                    className="w-32"
                     disabled={linkSending}
                   />
                   <Button type="submit" size="sm" disabled={linkSending || !linkUrl.trim()}>
@@ -633,15 +640,15 @@ export function TaskDetailPage() {
           )}
 
           {statusHistory.length > 0 && (
-            <div className="border-t pt-4 mt-4 space-y-0">
-              <div className="flex items-center gap-2 font-medium mb-3">
-                <GitBranch className="h-4 w-4" />
+            <div className="border-t border-border pt-6 mt-2 space-y-4">
+              <h3 className="flex items-center gap-2 font-medium text-foreground text-sm mb-1">
+                <GitBranch className="h-4 w-4 shrink-0" />
                 Progress timeline
-              </div>
+              </h3>
               <ul className="relative pl-5 border-l-2 border-muted space-y-4">
                 {statusHistory.map((entry) => (
-                  <li key={entry.id} className="relative flex gap-3">
-                    <span className="absolute -left-[29px] top-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground">
+                  <li key={entry.id} className="relative flex gap-3 pb-1">
+                    <span className="absolute -left-[29px] top-1.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground">
                       <Circle className="h-2 w-2 fill-current" />
                     </span>
                     <div className="flex-1 min-w-0 pt-0.5">
@@ -668,37 +675,39 @@ export function TaskDetailPage() {
             </div>
           )}
 
-          <div className="border-t pt-4 mt-4 space-y-3">
-            <div className="flex items-center gap-2 font-medium">
-              <MessageSquare className="h-4 w-4" />
+          <div className="border-t border-border pt-6 mt-2 space-y-4">
+            <h3 className="flex items-center gap-2 font-medium text-foreground text-sm">
+              <MessageSquare className="h-4 w-4 shrink-0" />
               Comments
-            </div>
-            {comments.length > 0 && (
+            </h3>
+            {comments.length > 0 ? (
               <ul className="space-y-3">
                 {comments.map((c) => (
-                  <li key={c.id} className="rounded-lg bg-muted/50 p-3">
+                  <li key={c.id} className="rounded-lg bg-muted/50 p-4">
                     <p className="text-sm font-medium">
                       {c.author_detail?.username ?? 'Unknown'}
                       <span className="text-muted-foreground font-normal ml-2 text-xs">
                         {format(new Date(c.created_at), 'PPp')}
                       </span>
                     </p>
-                    <p className="text-sm whitespace-pre-wrap mt-1">{c.body}</p>
+                    <p className="text-sm whitespace-pre-wrap mt-1.5 leading-relaxed">{c.body}</p>
                   </li>
                 ))}
               </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">No comments yet.</p>
             )}
             {canComment && (
-              <form onSubmit={handleAddComment} className="flex gap-2">
-                <input
-                  type="text"
+              <form onSubmit={handleAddComment} className="flex gap-2 items-end">
+                <textarea
                   placeholder="Write a comment…"
                   value={commentBody}
                   onChange={(e) => setCommentBody(e.target.value)}
-                  className="flex-1 rounded-md border bg-background px-3 py-2 text-sm"
+                  rows={2}
+                  className="flex-1 min-h-[80px] rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
                   disabled={commentSending}
                 />
-                <Button type="submit" size="sm" disabled={commentSending || !commentBody.trim()}>
+                <Button type="submit" size="sm" disabled={commentSending || !commentBody.trim()} className="shrink-0">
                   {commentSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
               </form>

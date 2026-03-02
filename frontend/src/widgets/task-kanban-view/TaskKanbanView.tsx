@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import type { Task } from '@/entities/task/model/types'
 import { Card, CardContent } from '@/shared/ui/card'
 import { Badge } from '@/shared/ui/badge'
@@ -38,15 +38,21 @@ interface TaskKanbanViewProps {
 }
 
 export function TaskKanbanView({ tasks, onUpdate, onAddTask }: TaskKanbanViewProps) {
-  const navigate = useNavigate()
   const [dragOverStatus, setDragOverStatus] = useState<Task['status'] | null>(null)
+  const [draggingTaskId, setDraggingTaskId] = useState<number | null>(null)
 
   const byStatus = (status: Task['status']) => tasks.filter((t) => t.status === status)
 
   const handleDragStart = (e: React.DragEvent, taskId: number) => {
     e.dataTransfer.setData('application/taskflow-task-id', String(taskId))
     e.dataTransfer.effectAllowed = 'move'
-    e.dataTransfer.setData('text/plain', '') // some browsers need this for drag image
+    e.dataTransfer.setData('text/plain', '')
+    setDraggingTaskId(taskId)
+  }
+
+  const handleDragEnd = () => {
+    setDraggingTaskId(null)
+    setDragOverStatus(null)
   }
 
   const handleDragOver = (e: React.DragEvent, status: Task['status']) => {
@@ -78,14 +84,16 @@ export function TaskKanbanView({ tasks, onUpdate, onAddTask }: TaskKanbanViewPro
     (t.assignees_detail?.length ? t.assignees_detail : t.assigned_to_detail ? [t.assigned_to_detail] : [])
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-x-auto pb-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-x-auto pb-4 pr-2 snap-x snap-mandatory">
       {STATUS_COLUMNS.map(({ status, label }) => {
         const count = byStatus(status).length
         const isDragOver = dragOverStatus === status
         return (
           <div
             key={status}
-            className="min-w-[280px] flex flex-col"
+            role="region"
+            aria-label={`${label}, ${count} task${count === 1 ? '' : 's'}`}
+            className="min-w-[280px] flex flex-col snap-start"
             onDragOver={(e) => handleDragOver(e, status)}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, status)}
@@ -103,7 +111,7 @@ export function TaskKanbanView({ tasks, onUpdate, onAddTask }: TaskKanbanViewPro
             </div>
             <div
               className={cn(
-                'flex-1 space-y-2 min-h-[140px] rounded-b-xl border border-t-0 border-border bg-muted/20 p-3 transition-colors',
+                'flex-1 space-y-2 min-h-[160px] rounded-b-xl border border-t-0 border-border bg-muted/20 p-3 transition-colors',
                 isDragOver && 'bg-primary/5 border-primary/20 border-t-0'
               )}
             >
@@ -112,44 +120,54 @@ export function TaskKanbanView({ tasks, onUpdate, onAddTask }: TaskKanbanViewPro
                   key={t.id}
                   draggable
                   onDragStart={(e) => handleDragStart(e, t.id)}
-                  onClick={() => navigate(`/tasks/${t.id}`)}
+                  onDragEnd={handleDragEnd}
                   className={cn(
-                    'transition-default hover:shadow-md hover:border-primary/20 cursor-grab active:cursor-grabbing border-l-4',
+                    'transition-default hover:shadow-md hover:-translate-y-0.5 hover:border-primary/20 cursor-grab active:cursor-grabbing border-l-4',
                     priorityBorderColors[t.priority] ?? 'border-l-muted-foreground/30',
-                    t.is_overdue && 'border-destructive/40'
+                    t.is_overdue && 'border-destructive/40',
+                    draggingTaskId === t.id && 'opacity-50'
                   )}
                 >
-                  <CardContent className="p-3">
-                    <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                      <Badge className={cn('text-xs', priorityColors[t.priority] ?? '')}>
-                        {t.priority}
-                      </Badge>
-                      {t.is_overdue && (
-                        <span className="inline-flex items-center gap-0.5 text-destructive text-xs font-medium">
-                          <AlertCircle className="h-3.5 w-3.5" /> Overdue
-                        </span>
-                      )}
-                    </div>
-                    <p className="font-medium text-sm line-clamp-2 mb-2">{t.title}</p>
-                    <div className="flex items-center justify-between gap-2">
-                      {t.deadline && (
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(t.deadline), 'MMM d')}
-                        </span>
-                      )}
-                      <div className="flex -space-x-1.5 ml-auto">
-                        {assignees(t).slice(0, 3).map((u) => (
-                          <Avatar key={u.id} name={u.username} size="sm" className="ring-2 ring-card" />
-                        ))}
+                  <CardContent className="p-0">
+                    <Link
+                      to={`/tasks/${t.id}`}
+                      className="block p-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset rounded-lg"
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={`Open task: ${t.title}`}
+                    >
+                      <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                        <Badge className={cn('text-xs', priorityColors[t.priority] ?? '')}>
+                          {t.priority}
+                        </Badge>
+                        {t.is_overdue && (
+                          <span className="inline-flex items-center gap-0.5 text-destructive text-xs font-medium">
+                            <AlertCircle className="h-3.5 w-3.5" /> Overdue
+                          </span>
+                        )}
                       </div>
-                    </div>
+                      <p className="font-medium text-sm line-clamp-2 mb-2" title={t.title}>
+                        {t.title}
+                      </p>
+                      <div className="flex items-center justify-between gap-2">
+                        {t.deadline && (
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(t.deadline), 'MMM d')}
+                          </span>
+                        )}
+                        <div className="flex -space-x-1.5 ml-auto">
+                          {assignees(t).slice(0, 3).map((u) => (
+                            <Avatar key={u.id} name={u.username} size="sm" className="ring-2 ring-card" />
+                          ))}
+                        </div>
+                      </div>
+                    </Link>
                   </CardContent>
                 </Card>
               ))}
               {count === 0 && (
                 <div className="flex flex-col items-center justify-center py-8 rounded-lg border border-dashed border-muted-foreground/25 bg-muted/10 text-center">
                   <p className="text-sm text-muted-foreground">No tasks</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Drop here or add one</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Drag tasks here or add one</p>
                   {onAddTask && (
                     <Button
                       variant="ghost"
@@ -163,6 +181,11 @@ export function TaskKanbanView({ tasks, onUpdate, onAddTask }: TaskKanbanViewPro
                       <Plus className="h-4 w-4" /> Add task
                     </Button>
                   )}
+                </div>
+              )}
+              {isDragOver && count > 0 && (
+                <div className="rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 py-3 text-center">
+                  <p className="text-xs font-medium text-primary">Drop here</p>
                 </div>
               )}
               {count > 0 && onAddTask && (

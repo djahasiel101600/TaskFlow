@@ -224,7 +224,7 @@ export function CreateTaskDialog({ open, onOpenChange, onSuccess, initialStatus 
               onChange={(e) => setReminderDatetime(e.target.value)}
               title="When to send a reminder notification (optional)"
             />
-            <p className="text-xs text-muted-foreground">Optional. You’ll get a notification at this time.</p>
+            <p className="text-xs text-muted-foreground">Optional. You’ll get a sound and notification at this time, like an alarm.</p>
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>

@@ -99,6 +99,7 @@ export function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold tabular-nums">{upcoming.length}</p>
+            <Link to="/tasks?ordering=deadline" className="text-xs text-primary font-medium mt-1 inline-block hover:underline">View by deadline →</Link>
           </CardContent>
         </Card>
         <Link to="/notifications" className="group">

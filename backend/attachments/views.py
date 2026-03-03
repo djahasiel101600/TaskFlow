@@ -28,7 +28,7 @@ class AttachmentListCreateView(generics.ListCreateAPIView):
         task_id = self.request.query_params.get("task_id")
         if task_id:
             task = Task.objects.filter(id=task_id).first()
-            if not task or not user_has_perm(self.request.user, "can_view_tasks"):
+            if not task or not user_can_view_task(self.request.user, task):
                 return Attachment.objects.none()
             return Attachment.objects.filter(task_id=task_id).order_by("-created_at")
         return Attachment.objects.filter(uploaded_by=self.request.user).order_by("-created_at")
@@ -40,6 +40,25 @@ class AttachmentListCreateView(generics.ListCreateAPIView):
                 {"file": ["No file provided."]},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        task_id = request.data.get("task")
+        if not task_id:
+            return Response(
+                {"task": ["Task is required."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        task = Task.objects.filter(pk=task_id).first()
+        if not task:
+            return Response(
+                {"task": ["Task not found."]},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if not user_can_view_task(request.user, task):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("You can only add attachments to tasks you created or are assigned to.")
+        can_edit = task.created_by_id == request.user.id or user_has_perm(request.user, "can_edit_tasks") or request.user.is_superuser
+        if not can_edit:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only the task creator or users with edit permission can add attachments.")
         ext = os.path.splitext(file.name)[1].lower()
         if ext not in ALLOWED_EXT:
             return Response(

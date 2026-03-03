@@ -14,15 +14,15 @@ def user_has_perm(user, perm_name):
 
 
 def user_can_see_all_tasks(user):
-    """Staff or users with can_view_tasks can see all tasks; others only their own / assigned."""
-    return user.is_staff or user.is_superuser or user_has_perm(user, "can_view_tasks")
+    """Only superuser sees all tasks. Everyone else sees only tasks they created or are assigned to."""
+    return user.is_superuser
 
 
 def user_can_view_task(user, task):
-    """Task is visible to creator, single assignee, any assignee in assignees, or staff."""
+    """Task is visible to creator, assignee, or any assignee in assignees. Superuser can see any."""
     if not user or not user.is_authenticated:
         return False
-    if user_can_see_all_tasks(user):
+    if user.is_superuser:
         return True
     if task.created_by_id == user.id:
         return True
@@ -54,6 +54,10 @@ class TaskPermissions(permissions.BasePermission):
             return False
         if request.method in ("GET", "HEAD"):
             return True
+        # Creator can always edit and delete their own task
+        if obj.created_by_id == request.user.id:
+            if request.method in ("PUT", "PATCH", "DELETE"):
+                return True
         if request.method in ("PUT", "PATCH"):
             return user_has_perm(request.user, "can_edit_tasks")
         if request.method == "DELETE":

@@ -85,8 +85,9 @@ export function TaskDetailPage() {
   const [statusHistory, setStatusHistory] = useState<TaskStatusHistoryItem[]>([])
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.is_superuser ?? user?.is_staff
-  const canEdit = user?.role_detail?.can_edit_tasks ?? isAdmin
-  const canDelete = user?.role_detail?.can_delete_tasks ?? isAdmin
+  const isCreator = !!task && task.created_by === user?.id
+  const canEdit = isCreator || (user?.role_detail?.can_edit_tasks ?? isAdmin)
+  const canDelete = isCreator || (user?.role_detail?.can_delete_tasks ?? isAdmin)
   const canAssign = user?.role_detail?.can_assign_tasks ?? isAdmin
   const canComment = !!user && !!task && (task.created_by === user.id || (task.assignees && task.assignees.includes(user.id)))
 
@@ -123,8 +124,12 @@ export function TaskDetailPage() {
       try {
         const data = JSON.parse(event.data)
         if (data?.type === 'new_comment' && data.comment) {
+          const currentUser = useAuthStore.getState().user
           setComments((prev) => {
             if (prev.some((c) => c.id === data.comment.id)) return prev
+            // Don't add our own comment from WebSocket — we already added it from the API response on submit
+            const authorId = data.comment.author ?? data.comment.author_detail?.id
+            if (authorId != null && currentUser?.id != null && authorId === currentUser.id) return prev
             return [...prev, data.comment]
           })
         }

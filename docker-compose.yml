@@ -6,6 +6,10 @@
 #   docker compose down                     # stop and remove containers
 #   docker compose down -v                  # also remove volumes (DB data)
 #
+# Database: Containers use the in-container Postgres (service "postgres") by default.
+# The database in backend/.env (e.g. Supabase) is NOT used by Docker — only when you
+# run the backend locally (e.g. python manage.py runserver).
+#
 # First run: run migrations and create roles/superuser in the backend container:
 #   docker compose exec backend python manage.py migrate
 #   docker compose exec backend python manage.py create_roles

@@ -117,6 +117,7 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB (request body limit for uploads)
 ALLOWED_UPLOAD_EXTENSIONS = {
     "images": {".jpg", ".jpeg", ".png", ".gif", ".webp"},
     "documents": {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv"},

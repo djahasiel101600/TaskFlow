@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/shared/ui/card'
 import { Button } from '@/shared/ui/button'
 import { Badge } from '@/shared/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/shared/ui/tabs'
-import { Plus, Pencil, UserCheck } from 'lucide-react'
+import { Plus, Pencil, UserCheck, Trash2 } from 'lucide-react'
 import { EditUserDialog } from '@/features/user/edit-user'
 import { CreateUserDialog } from '@/features/user/create-user'
 
@@ -14,12 +14,14 @@ type FilterTab = 'all' | 'pending'
 export function UsersPage() {
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.is_staff ?? user?.is_superuser ?? false
+  const canManageUsers = isAdmin || (user?.role_detail?.can_manage_users ?? false)
   const [users, setUsers] = useState<UserFull[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<FilterTab>('all')
   const [editUser, setEditUser] = useState<UserFull | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [approvingId, setApprovingId] = useState<number | null>(null)
+  const [deletingId, setDeletingId] = useState<number | null>(null)
 
   const load = () => {
     setLoading(true)
@@ -45,6 +47,21 @@ export function UsersPage() {
     }
   }
 
+  const handleDelete = async (u: UserFull) => {
+    if (u.id === user?.id) return
+    const name = [u.username, u.first_name, u.last_name].filter(Boolean).join(' ') || u.email
+    if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return
+    setDeletingId(u.id)
+    try {
+      await usersApi.delete(u.id)
+      load()
+    } catch {
+      // Error already shown by apiClient or could add toast
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -62,7 +79,7 @@ export function UsersPage() {
         )}
       </div>
 
-      {isAdmin && (
+      {canManageUsers && (
         <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterTab)} className="w-full max-w-[200px]">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="all">All</TabsTrigger>
@@ -84,7 +101,7 @@ export function UsersPage() {
                     <th className="text-left p-3 font-medium">Email</th>
                     <th className="text-left p-3 font-medium">Role</th>
                     <th className="text-left p-3 font-medium">Status</th>
-                    <th className="text-left p-3 font-medium w-[140px]">Actions</th>
+                    <th className="text-left p-3 font-medium w-[180px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -121,7 +138,7 @@ export function UsersPage() {
                           )}
                         </td>
                         <td className="p-3 flex items-center gap-1">
-                          {!u.is_active && isAdmin && (
+                          {!u.is_active && canManageUsers && (
                             <Button
                               variant="default"
                               size="sm"
@@ -134,7 +151,7 @@ export function UsersPage() {
                               {approvingId === u.id ? '…' : 'Approve'}
                             </Button>
                           )}
-                          {isAdmin && (
+                          {canManageUsers && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -142,6 +159,18 @@ export function UsersPage() {
                               title="Edit user"
                             >
                               <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canManageUsers && u.id !== user?.id && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => handleDelete(u)}
+                              disabled={deletingId === u.id}
+                              title="Delete user"
+                            >
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
                         </td>

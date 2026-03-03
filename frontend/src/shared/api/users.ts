@@ -53,6 +53,7 @@ export const usersApi = {
   get: (id: number) => apiClient.get<UserFull>(`${AUTH}/users/${id}/`).then((r) => r.data),
   update: (id: number, data: Partial<Pick<UserFull, 'role' | 'is_active' | 'first_name' | 'last_name' | 'email'>>) =>
     apiClient.patch<UserFull>(`${AUTH}/users/${id}/`, data).then((r) => r.data),
+  delete: (id: number) => apiClient.delete(`${AUTH}/users/${id}/`),
   create: (data: { username: string; email: string; password: string; first_name?: string; last_name?: string; role?: number | null; is_active?: boolean }) =>
     apiClient.post<UserFull>(`${AUTH}/users/`, data).then((r) => r.data),
 }

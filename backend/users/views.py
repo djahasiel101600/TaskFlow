@@ -129,7 +129,7 @@ class CanManageUsersOrAdmin(permissions.BasePermission):
         return bool(role and getattr(role, "can_manage_users", False))
 
 
-class UserDetailView(generics.RetrieveUpdateAPIView):
+class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.select_related("role")
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated, CanManageUsersOrAdmin]
@@ -138,6 +138,12 @@ class UserDetailView(generics.RetrieveUpdateAPIView):
         if self.request.method == "GET":
             return [permissions.IsAuthenticated()]
         return [permissions.IsAuthenticated(), CanManageUsersOrAdmin()]
+
+    def perform_destroy(self, instance):
+        if instance.id == self.request.user.id:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({"detail": "You cannot delete your own account."})
+        instance.delete()
 
 
 class RoleListView(generics.ListAPIView):

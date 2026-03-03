@@ -1,43 +1,45 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Button } from '@/shared/ui/button'
-import { Input } from '@/shared/ui/input'
-import { Label } from '@/shared/ui/label'
-import { useAuthStore } from '@/shared/store/auth'
-import { apiClient } from '@/shared/api/client'
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
+import { useAuthStore } from "@/shared/store/auth";
+import { apiClient } from "@/shared/api/client";
 
 export function LoginForm() {
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const navigate = useNavigate()
-  const setAuth = useAuthStore((s) => s.setAuth)
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const setAuth = useAuthStore((s) => s.setAuth);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
     try {
       const { data } = await apiClient.post<{
-        access: string
-        refresh: string
-        user: Parameters<typeof setAuth>[2]
-      }>('auth/login/', { username, password })
-      setAuth(data.access, data.refresh, data.user)
-      navigate('/dashboard', { replace: true })
+        access: string;
+        refresh: string;
+        user: Parameters<typeof setAuth>[2];
+      }>("auth/login/", { username, password });
+      setAuth(data.access, data.refresh, data.user);
+      navigate("/dashboard", { replace: true });
     } catch (err: unknown) {
-      const ax = err as { response?: { data?: { detail?: string } } }
-      setError(ax.response?.data?.detail ?? 'Login failed. Check credentials.')
+      const ax = err as { response?: { data?: { detail?: string } } };
+      setError(ax.response?.data?.detail ?? "Login failed. Check credentials.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5 w-full">
+    <form onSubmit={handleSubmit} className="space-y-5 w-full mt-4">
       <div className="space-y-2">
-        <Label htmlFor="username" className="text-foreground font-medium">Username or email</Label>
+        <Label htmlFor="username" className="text-foreground font-medium">
+          Username or email
+        </Label>
         <Input
           id="username"
           type="text"
@@ -51,7 +53,9 @@ export function LoginForm() {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="password" className="text-foreground font-medium">Password</Label>
+        <Label htmlFor="password" className="text-foreground font-medium">
+          Password
+        </Label>
         <Input
           id="password"
           type="password"
@@ -71,9 +75,13 @@ export function LoginForm() {
           </p>
         </div>
       )}
-      <Button type="submit" className="w-full h-11 font-medium" disabled={loading}>
-        {loading ? 'Signing in…' : 'Sign in'}
+      <Button
+        type="submit"
+        className="w-full h-11 font-medium"
+        disabled={loading}
+      >
+        {loading ? "Signing in…" : "Sign in"}
       </Button>
     </form>
-  )
+  );
 }

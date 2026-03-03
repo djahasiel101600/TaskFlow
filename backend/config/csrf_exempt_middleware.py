@@ -10,5 +10,5 @@ class JWTAuthCSRFExemptMiddleware(MiddlewareMixin):
 
     def process_request(self, request):
         path = (request.path or "").rstrip("/")
-        if path.endswith("/api/auth/login") or path.endswith("/api/auth/refresh"):
+        if path.endswith("/api/auth/login") or path.endswith("/api/auth/refresh") or path.endswith("/api/auth/register"):
             request.csrf_processing_done = True

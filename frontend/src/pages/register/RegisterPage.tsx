@@ -1,9 +1,8 @@
-import { Link } from 'react-router-dom'
 import { ClipboardList } from 'lucide-react'
-import { LoginForm } from '@/features/auth/login-form'
+import { RegisterForm } from '@/features/auth/register-form'
 import { Card, CardContent } from '@/shared/ui/card'
 
-export function LoginPage() {
+export function RegisterPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-background via-muted/30 to-primary/5 px-4 py-12">
       <div className="w-full max-w-md flex flex-col items-center gap-8">
@@ -14,17 +13,13 @@ export function LoginPage() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">TaskFlow</h1>
             <p className="text-muted-foreground text-sm mt-1">
-              COA Task & Communication Management
+              Create an account — pending admin approval
             </p>
           </div>
         </div>
         <Card className="w-full shadow-md border-border/80">
           <CardContent className="pt-6 pb-6">
-            <LoginForm />
-            <p className="text-center text-sm text-muted-foreground mt-4">
-              Don&apos;t have an account?{' '}
-              <Link to="/register" className="text-primary font-medium hover:underline">Register</Link>
-            </p>
+            <RegisterForm />
           </CardContent>
         </Card>
       </div>

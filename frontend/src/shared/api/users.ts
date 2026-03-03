@@ -43,8 +43,10 @@ export const usersApi = {
     const d = r.data
     return Array.isArray(d) ? d : (d.results ?? [])
   },
-  listFull: async (): Promise<UserFull[]> => {
-    const r = await apiClient.get<UserFull[] | { results: UserFull[] }>(`${AUTH}/users/`)
+  listFull: async (params?: { is_active?: boolean }): Promise<UserFull[]> => {
+    const r = await apiClient.get<UserFull[] | { results: UserFull[] }>(`${AUTH}/users/`, {
+      params: params?.is_active !== undefined ? { is_active: params.is_active } : undefined,
+    })
     const d = r.data
     return Array.isArray(d) ? d : (d.results ?? [])
   },

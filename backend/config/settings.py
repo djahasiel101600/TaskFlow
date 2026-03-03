@@ -123,6 +123,9 @@ ALLOWED_UPLOAD_EXTENSIONS = {
     "documents": {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv"},
 }
 
+# When True, anyone can self-register; new users are created with is_active=False until an admin approves.
+REGISTRATION_OPEN = os.environ.get("REGISTRATION_OPEN", "true").lower() == "true"
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",

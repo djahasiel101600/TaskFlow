@@ -14,7 +14,7 @@
 | **View one task** | Same visibility: creator or assignee (or superuser). | `TaskDetailView.get_queryset`, `user_can_view_task()` |
 | **Create task** | `can_create_tasks` (role). Creator set to `request.user`. | `TaskPermissions.has_permission` POST, `perform_create` |
 | **Update task (PATCH/PUT)** | Creator can always edit; others need `can_edit_tasks` and must be able to view task. | `TaskPermissions.has_object_permission` |
-| **Delete task** | Creator can always delete; others need `can_delete_tasks` and must be able to view task. | `TaskPermissions.has_object_permission` |
+| **Delete task** | Only the **creator** (and superuser) can delete a task. Assignees cannot delete shared tasks. | `TaskPermissions.has_object_permission` |
 | **Comment** | Must be able to view task and be creator or in assignees. | `TaskCommentListCreateView.perform_create` + `user_can_view_task` |
 | **Links (add/delete)** | Must be able to view task. No separate “edit” check. | `TaskLinkListCreateView`, `TaskLinkDetailView.check_object_permissions` |
 | **Attachments** | List/view: if user can view task. Create: task creator or `can_edit_tasks`. Delete: task creator, uploader, or `can_edit_tasks`. | `attachments/views.py`, `attachments/permissions.py` |
@@ -26,7 +26,7 @@
 - **Support Staff**: view, create, edit, chat.
 - **Administrator**: all, including `can_delete_tasks`, `can_manage_users`.
 
-**Edit/delete:** Creator can always edit and delete their own task. Others need `can_edit_tasks` / `can_delete_tasks` to edit/delete tasks they can see (e.g. as assignees).
+**Edit:** Creator can always edit their own task; others need `can_edit_tasks` to edit tasks they can see. **Delete:** Only the creator (and superuser) can delete a task; assignees cannot delete shared tasks.
 
 ### Frontend
 

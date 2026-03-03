@@ -44,7 +44,8 @@ class TaskPermissions(permissions.BasePermission):
         if request.method in ("PUT", "PATCH"):
             return user_has_perm(request.user, "can_edit_tasks")
         if request.method == "DELETE":
-            return user_has_perm(request.user, "can_delete_tasks")
+            # Any authenticated user may attempt delete; object permission restricts to creator only
+            return True
         return False
 
     def has_object_permission(self, request, view, obj):
@@ -60,6 +61,7 @@ class TaskPermissions(permissions.BasePermission):
                 return True
         if request.method in ("PUT", "PATCH"):
             return user_has_perm(request.user, "can_edit_tasks")
+        # Delete: only creator (and superuser) can delete; shared tasks cannot be deleted by assignees
         if request.method == "DELETE":
-            return user_has_perm(request.user, "can_delete_tasks")
+            return False
         return False

@@ -87,7 +87,7 @@ export function TaskDetailPage() {
   const isAdmin = user?.is_superuser ?? user?.is_staff
   const isCreator = !!task && task.created_by === user?.id
   const canEdit = isCreator || (user?.role_detail?.can_edit_tasks ?? isAdmin)
-  const canDelete = isCreator || (user?.role_detail?.can_delete_tasks ?? isAdmin)
+  const canDelete = isCreator
   const canAssign = user?.role_detail?.can_assign_tasks ?? isAdmin
   const canComment = !!user && !!task && (task.created_by === user.id || (task.assignees && task.assignees.includes(user.id)))
 

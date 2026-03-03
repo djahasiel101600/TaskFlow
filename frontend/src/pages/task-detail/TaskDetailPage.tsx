@@ -138,6 +138,13 @@ export function TaskDetailPage() {
     return () => ws.close()
   }, [id, accessToken])
 
+  // When any task is updated elsewhere (e.g. status change by another user), refetch this task so the detail view stays in sync
+  useEffect(() => {
+    const onRefresh = () => load()
+    window.addEventListener('taskflow-tasks-refresh', onRefresh)
+    return () => window.removeEventListener('taskflow-tasks-refresh', onRefresh)
+  }, [id])
+
   // Fetch PDFs as blob for preview (authenticated); revoke blob URLs when attachments change or unmount
   const pdfIds = attachments
     .filter((a) => attachmentPreviewType(a.filename) === 'pdf')

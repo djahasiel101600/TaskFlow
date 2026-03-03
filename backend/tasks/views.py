@@ -187,11 +187,19 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
                 link=f"/tasks/{task.id}",
                 extra_data={"task_id": task.id},
             )
-        _broadcast_task_list_invalidate(
-            [user.id] + list(new_assignees) + ([assigned_to_pk] if assigned_to_pk else [])
-        )
+        # Notify everyone who can see the task so their list and detail views refresh in real time
+        to_notify = [user.id] + list(new_assignees) + ([assigned_to_pk] if assigned_to_pk else [])
+        if task.created_by_id:
+            to_notify.append(task.created_by_id)
+        _broadcast_task_list_invalidate(to_notify)
 
     def perform_destroy(self, instance):
+        to_notify = [self.request.user.id]
+        if instance.created_by_id:
+            to_notify.append(instance.created_by_id)
+        to_notify.extend(instance.assignees.values_list("id", flat=True))
+        if instance.assigned_to_id:
+            to_notify.append(instance.assigned_to_id)
         AuditLog.objects.create(
             user=self.request.user,
             action=AuditLog.ACTION_DELETE,
@@ -200,6 +208,7 @@ class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
             changes={"title": instance.title},
         )
         instance.delete()
+        _broadcast_task_list_invalidate(to_notify)
 
 
 class TaskCommentListCreateView(generics.ListCreateAPIView):

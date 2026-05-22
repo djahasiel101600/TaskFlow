@@ -9,6 +9,8 @@ import { TaskDetailPage } from '@/pages/task-detail'
 import { ChatPage } from '@/pages/chat'
 import { NotificationsPage } from '@/pages/notifications'
 import { UsersPage } from '@/pages/users'
+import { AuditLogsPage } from '@/pages/audit-logs'
+import { Toaster } from '@/shared/ui/toaster'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.accessToken)
@@ -25,26 +27,30 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="tasks" element={<TaskListPage />} />
-        <Route path="tasks/:id" element={<TaskDetailPage />} />
-        <Route path="chat" element={<ChatPage />} />
-        <Route path="notifications" element={<NotificationsPage />} />
-        <Route path="users" element={<AdminRoute><UsersPage /></AdminRoute>} />
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="tasks" element={<TaskListPage />} />
+          <Route path="tasks/:id" element={<TaskDetailPage />} />
+          <Route path="chat" element={<ChatPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="users" element={<AdminRoute><UsersPage /></AdminRoute>} />
+          <Route path="audit-logs" element={<AdminRoute><AuditLogsPage /></AdminRoute>} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <Toaster />
+    </>
   )
 }

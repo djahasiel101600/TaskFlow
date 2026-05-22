@@ -32,7 +32,7 @@ def process_reminders_and_deadlines(*, dry_run: bool = False) -> tuple[int, int]
         active,
         reminder_datetime__isnull=False,
         reminder_datetime__lte=now,
-    ).select_related("assigned_to", "created_by")
+    ).select_related("assigned_to", "created_by").prefetch_related("assignees")
 
     for task in reminder_tasks:
         if Notification.objects.filter(
@@ -41,27 +41,35 @@ def process_reminders_and_deadlines(*, dry_run: bool = False) -> tuple[int, int]
             created_at__gte=now - timezone.timedelta(hours=1),
         ).exists():
             continue
-        recipient = task.assigned_to or task.created_by
-        if not recipient:
-            continue
         if dry_run:
             continue
-        Notification.objects.create(
-            recipient=recipient,
-            notification_type=Notification.TYPE_REMINDER,
-            title="Reminder",
-            message=f'Task "{task.title}" reminder.',
-            link=f"/tasks/{task.id}",
-            extra_data={"task_id": task.id},
-        )
-        reminders_created += 1
+
+        # Collect all recipients: M2M assignees + assigned_to FK + created_by
+        recipient_ids: set[int] = set()
+        for u in task.assignees.all():
+            recipient_ids.add(u.id)
+        if task.assigned_to_id:
+            recipient_ids.add(task.assigned_to_id)
+        if task.created_by_id:
+            recipient_ids.add(task.created_by_id)
+
+        for uid in recipient_ids:
+            Notification.objects.create(
+                recipient_id=uid,
+                notification_type=Notification.TYPE_REMINDER,
+                title="Reminder",
+                message=f'Task "{task.title}" reminder.',
+                link=f"/tasks/{task.id}",
+                extra_data={"task_id": task.id},
+            )
+            reminders_created += 1
 
     # Deadlines: deadline <= now
     deadline_tasks = Task.objects.filter(
         active,
         deadline__isnull=False,
         deadline__lte=now,
-    ).select_related("assigned_to", "created_by")
+    ).select_related("assigned_to", "created_by").prefetch_related("assignees")
 
     for task in deadline_tasks:
         if Notification.objects.filter(
@@ -70,19 +78,27 @@ def process_reminders_and_deadlines(*, dry_run: bool = False) -> tuple[int, int]
             created_at__gte=now - timezone.timedelta(hours=24),
         ).exists():
             continue
-        recipient = task.assigned_to or task.created_by
-        if not recipient:
-            continue
         if dry_run:
             continue
-        Notification.objects.create(
-            recipient=recipient,
-            notification_type=Notification.TYPE_DEADLINE,
-            title="Deadline Reached",
-            message=f'Task "{task.title}" has reached its deadline.',
-            link=f"/tasks/{task.id}",
-            extra_data={"task_id": task.id},
-        )
-        deadlines_created += 1
+
+        # Collect all recipients: M2M assignees + assigned_to FK + created_by
+        recipient_ids: set[int] = set()
+        for u in task.assignees.all():
+            recipient_ids.add(u.id)
+        if task.assigned_to_id:
+            recipient_ids.add(task.assigned_to_id)
+        if task.created_by_id:
+            recipient_ids.add(task.created_by_id)
+
+        for uid in recipient_ids:
+            Notification.objects.create(
+                recipient_id=uid,
+                notification_type=Notification.TYPE_DEADLINE,
+                title="Deadline Reached",
+                message=f'Task "{task.title}" has reached its deadline.',
+                link=f"/tasks/{task.id}",
+                extra_data={"task_id": task.id},
+            )
+            deadlines_created += 1
 
     return reminders_created, deadlines_created

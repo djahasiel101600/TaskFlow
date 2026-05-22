@@ -20,6 +20,7 @@ import { tasksApi } from '@/shared/api/tasks'
 import { useAuthStore } from '@/shared/store/auth'
 import { usersApi } from '@/shared/api/users'
 import type { TaskPriority, TaskStatus } from '@/entities/task/model/types'
+import { toast } from '@/shared/store/toast'
 
 interface CreateTaskDialogProps {
   open: boolean
@@ -102,18 +103,19 @@ export function CreateTaskDialog({ open, onOpenChange, onSuccess, initialStatus 
         deadline: deadline || null,
         reminder_datetime: reminderDatetime ? new Date(reminderDatetime).toISOString() : null,
       })
+      toast.success('Task created successfully')
       onSuccess()
       handleOpen(false)
     } catch (err: unknown) {
       const ax = err as { response?: { data?: Record<string, string[]> } }
       const msg = ax.response?.data
-      setError(
-        msg && typeof msg === 'object'
-          ? Object.entries(msg)
-              .flatMap(([, v]) => (Array.isArray(v) ? v : [String(v)]))
-              .join(' ')
-          : 'Failed to create task'
-      )
+      const errorMsg = msg && typeof msg === 'object'
+        ? Object.entries(msg)
+            .flatMap(([, v]) => (Array.isArray(v) ? v : [String(v)]))
+            .join(' ')
+        : 'Failed to create task'
+      setError(errorMsg)
+      toast.error(errorMsg)
     } finally {
       setLoading(false)
     }

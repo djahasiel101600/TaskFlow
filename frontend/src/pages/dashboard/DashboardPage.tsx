@@ -3,16 +3,18 @@ import { Link } from 'react-router-dom'
 import { tasksApi } from '@/shared/api/tasks'
 import type { Task } from '@/entities/task/model/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
-import { AlertCircle, Calendar, ListTodo, ArrowRight } from 'lucide-react'
-import { format } from 'date-fns'
+import { AlertCircle, Calendar, ListTodo, ArrowRight, Activity } from 'lucide-react'
+import { format, formatDistanceToNow } from 'date-fns'
 import { useAuthStore } from '@/shared/store/auth'
 import { useNotificationsStore } from '@/shared/store/notifications'
+import { auditLogsApi, type AuditLog } from '@/shared/api/audit-logs'
 
 export function DashboardPage() {
   const userId = useAuthStore((s) => s.user?.id)
   const [myTasks, setMyTasks] = useState<Task[]>([])
   const [overdue, setOverdue] = useState<Task[]>([])
   const [upcoming, setUpcoming] = useState<Task[]>([])
+  const [recentActivity, setRecentActivity] = useState<AuditLog[]>([])
   const [loading, setLoading] = useState(true)
   const { items: notifications, unreadCount, fetch: fetchNotifications } = useNotificationsStore()
 
@@ -20,9 +22,10 @@ export function DashboardPage() {
     let cancelled = false
     async function load() {
       try {
-        const [allRes, myRes] = await Promise.all([
+        const [allRes, myRes, activityRes] = await Promise.all([
           tasksApi.list({ ordering: '-deadline' }),
           tasksApi.list({ my_tasks: true }),
+          auditLogsApi.list({ page_size: 6 }).catch(() => ({ results: [] as AuditLog[], count: 0, next: null, previous: null })),
         ])
         if (cancelled) return
         const my = myRes.results ?? []
@@ -34,6 +37,7 @@ export function DashboardPage() {
             (t) => t.deadline && t.deadline > now && !['finished', 'cancelled'].includes(t.status)
           ).slice(0, 5)
         )
+        setRecentActivity(activityRes.results.slice(0, 6))
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -118,7 +122,7 @@ export function DashboardPage() {
         </Link>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         <Card className="transition-default hover:shadow-md">
           <CardHeader>
             <CardTitle className="text-lg">Overdue Tasks</CardTitle>
@@ -167,6 +171,48 @@ export function DashboardPage() {
                     <time className="text-xs text-muted-foreground mt-1 block">
                       {format(new Date(n.created_at), 'PPp')}
                     </time>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="transition-default hover:shadow-md md:col-span-2 xl:col-span-1">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Activity className="h-4 w-4 text-primary" /> Recent Activity
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-0.5">Latest system actions</p>
+            </div>
+            <Link to="/audit-logs" className="text-xs text-primary hover:underline shrink-0">View all →</Link>
+          </CardHeader>
+          <CardContent>
+            {recentActivity.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-muted-foreground/25 bg-muted/30 py-10 text-center">
+                <p className="text-sm text-muted-foreground">No activity yet</p>
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {recentActivity.map((log) => (
+                  <li key={log.id} className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs font-bold uppercase">
+                      {log.action?.[0] ?? '?'}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm leading-snug">
+                        <span className="font-medium">{log.username ?? 'System'}</span>
+                        {' '}
+                        <span className="text-muted-foreground capitalize">{log.action}</span>
+                        {' '}
+                        <span className="text-muted-foreground capitalize">{log.model_name}</span>
+                        {' '}
+                        <span className="font-mono text-xs text-muted-foreground">#{log.object_id}</span>
+                      </p>
+                      <time className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
+                      </time>
+                    </div>
                   </li>
                 ))}
               </ul>

@@ -8,6 +8,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/shared/ui/tabs'
 import { Plus, Pencil, UserCheck, Trash2 } from 'lucide-react'
 import { EditUserDialog } from '@/features/user/edit-user'
 import { CreateUserDialog } from '@/features/user/create-user'
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
+import { toast } from '@/shared/store/toast'
 
 type FilterTab = 'all' | 'pending'
 
@@ -22,6 +24,7 @@ export function UsersPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [approvingId, setApprovingId] = useState<number | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState<UserFull | null>(null)
 
   const load = () => {
     setLoading(true)
@@ -41,24 +44,33 @@ export function UsersPage() {
     setApprovingId(u.id)
     try {
       await usersApi.update(u.id, { is_active: true })
+      toast.success(`${u.username} approved`)
       load()
+    } catch {
+      toast.error('Failed to approve user')
     } finally {
       setApprovingId(null)
     }
   }
 
-  const handleDelete = async (u: UserFull) => {
+  const handleDelete = (u: UserFull) => {
     if (u.id === user?.id) return
-    const name = [u.username, u.first_name, u.last_name].filter(Boolean).join(' ') || u.email
-    if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return
+    setConfirmDeleteUser(u)
+  }
+
+  const confirmDeleteUserAction = async () => {
+    if (!confirmDeleteUser) return
+    const u = confirmDeleteUser
     setDeletingId(u.id)
     try {
       await usersApi.delete(u.id)
+      toast.success(`User "${u.username}" deleted`)
       load()
     } catch {
-      // Error already shown by apiClient or could add toast
+      toast.error('Failed to delete user')
     } finally {
       setDeletingId(null)
+      setConfirmDeleteUser(null)
     }
   }
 
@@ -195,6 +207,16 @@ export function UsersPage() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={!!confirmDeleteUser}
+        onOpenChange={(open) => { if (!open) setConfirmDeleteUser(null) }}
+        title={`Delete user "${confirmDeleteUser?.username}"?`}
+        description="This action cannot be undone. All data associated with this user will be permanently removed."
+        confirmLabel="Delete user"
+        loading={deletingId !== null}
+        onConfirm={confirmDeleteUserAction}
+      />
     </div>
   )
 }

@@ -15,6 +15,8 @@ import {
   AlertTriangle,
   Menu,
   X,
+  Moon,
+  Sun,
 } from 'lucide-react'
 import type { NotificationItem } from '@/shared/api/notifications'
 import { playNotificationSound, unlockNotificationSound, showBrowserNotification } from '@/shared/lib/notificationSound'
@@ -28,7 +30,24 @@ const navItems = [
   { to: '/chat', label: 'Chat', icon: MessageSquare },
   { to: '/notifications', label: 'Notifications', icon: Bell, badge: true },
   { to: '/users', label: 'Users', icon: Users, adminOnly: true },
+  { to: '/audit-logs', label: 'Audit Logs', icon: ClipboardList, adminOnly: true },
 ]
+
+function useDarkMode() {
+  const [dark, setDark] = useState(() => {
+    try { return localStorage.getItem('theme') === 'dark' } catch { return false }
+  })
+  useEffect(() => {
+    if (dark) {
+      document.documentElement.classList.add('dark')
+      try { localStorage.setItem('theme', 'dark') } catch {}
+    } else {
+      document.documentElement.classList.remove('dark')
+      try { localStorage.setItem('theme', 'light') } catch {}
+    }
+  }, [dark])
+  return [dark, setDark] as const
+}
 
 
 export function Layout() {
@@ -44,6 +63,7 @@ export function Layout() {
   const [overdueCount, setOverdueCount] = useState(0)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const activeAlarmIds = useAlarmStore((s) => s.activeAlarmIds)
+  const [darkMode, setDarkMode] = useDarkMode()
 
   useEffect(() => {
     fetchNotifications()
@@ -130,8 +150,14 @@ export function Layout() {
             extra_data: payload.extra_data ?? {},
           })
           const isReminderOrDeadline = payload.notification_type === 'reminder' || payload.notification_type === 'deadline'
-          playNotificationSound(isReminderOrDeadline)
-          if (document.hidden && isReminderOrDeadline) {
+          const isTaskAssignedOrUpdated = payload.notification_type === 'task_assigned' || payload.notification_type === 'task_updated'
+          if (isReminderOrDeadline) playNotificationSound(true)
+          else if (isTaskAssignedOrUpdated) playNotificationSound(false)
+          if (isTaskAssignedOrUpdated) {
+            window.dispatchEvent(new CustomEvent('taskflow-tasks-refresh'))
+            refreshOverdueCount()
+          }
+          if (document.hidden && (isReminderOrDeadline || isTaskAssignedOrUpdated)) {
             showBrowserNotification(payload.title, { body: payload.message ?? '' })
           }
           if (isReminderOrDeadline) {
@@ -271,9 +297,20 @@ export function Layout() {
           <span className="text-sm font-medium text-sidebar-foreground truncate" title={user?.username ?? user?.email}>
             {user?.username ?? user?.email}
           </span>
-          <Button variant="ghost" size="icon" onClick={handleLogout} title="Log out" className="rounded-lg shrink-0">
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-0.5 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setDarkMode((d) => !d)}
+              title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="rounded-lg h-8 w-8"
+            >
+              {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+            <Button variant="ghost" size="icon" onClick={handleLogout} title="Log out" className="rounded-lg h-8 w-8">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </>
@@ -336,9 +373,20 @@ export function Layout() {
             <div className="border-t border-sidebar-border p-4">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-medium text-sidebar-foreground truncate">{user?.username ?? user?.email}</span>
-                <Button variant="ghost" size="icon" onClick={handleLogout} title="Log out" className="rounded-lg shrink-0">
-                  <LogOut className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-0.5 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setDarkMode((d) => !d)}
+                    title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+                    className="rounded-lg h-8 w-8"
+                  >
+                    {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={handleLogout} title="Log out" className="rounded-lg h-8 w-8">
+                    <LogOut className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           </aside>

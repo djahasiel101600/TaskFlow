@@ -14,8 +14,13 @@ def user_has_perm(user, perm_name):
 
 
 def user_can_see_all_tasks(user):
-    """Only superuser sees all tasks. Everyone else sees only tasks they created or are assigned to."""
-    return user.is_superuser
+    """Superusers and staff/admin-role users can see all tasks."""
+    if user.is_superuser or user.is_staff:
+        return True
+    role = getattr(user, "role", None)
+    if role and getattr(role, "can_manage_users", False):
+        return True
+    return False
 
 
 def user_can_view_task(user, task):
@@ -44,8 +49,8 @@ class TaskPermissions(permissions.BasePermission):
         if request.method in ("PUT", "PATCH"):
             return user_has_perm(request.user, "can_edit_tasks")
         if request.method == "DELETE":
-            # Any authenticated user may attempt delete; object permission restricts to creator only
-            return True
+            # Enforce can_delete_tasks role permission at this layer too
+            return user_has_perm(request.user, "can_delete_tasks")
         return False
 
     def has_object_permission(self, request, view, obj):

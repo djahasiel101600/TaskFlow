@@ -47,7 +47,22 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       setAuth: (access, refresh, user) =>
         set({ accessToken: access, refreshToken: refresh, user }),
-      logout: () => set({ accessToken: null, refreshToken: null, user: null }),
+      logout: () => {
+        // Blacklist the refresh token server-side before clearing local state
+        const refresh = get().refreshToken
+        const access = get().accessToken
+        if (refresh) {
+          const base = typeof window !== 'undefined' ? '' : AUTH_URL
+          axios
+            .post(
+              `${base}/api/auth/logout/`,
+              { refresh },
+              access ? { headers: { Authorization: `Bearer ${access}` } } : undefined
+            )
+            .catch(() => {}) // Ignore errors — local state is cleared regardless
+        }
+        set({ accessToken: null, refreshToken: null, user: null })
+      },
       setUser: (user) => set({ user }),
       doRefresh: async () => {
         const refresh = get().refreshToken

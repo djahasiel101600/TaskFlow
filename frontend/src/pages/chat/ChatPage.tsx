@@ -29,11 +29,12 @@ function getChannelSubtitle(ch: ChannelItem, _currentUserId: number | undefined)
 
 function getChatAttachmentUrl(filePath: string): string {
   if (!filePath) return '#'
+  // File paths from the serializer already include /media/... so just prepend the origin
   if (filePath.startsWith('http://') || filePath.startsWith('https://')) return filePath
   const base = import.meta.env.VITE_API_URL || ''
   const origin = base ? new URL(base).origin : window.location.origin
-  const path = filePath.startsWith('/') ? filePath.slice(1) : filePath
-  return `${origin}/media/${path}`
+  const normalised = filePath.startsWith('/') ? filePath : `/${filePath}`
+  return `${origin}${normalised}`
 }
 
 export function ChatPage() {

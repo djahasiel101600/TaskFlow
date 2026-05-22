@@ -44,6 +44,8 @@ import {
 } from '@/shared/ui/dialog'
 import { cn } from '@/shared/lib/utils'
 import { buildWebSocketUrl } from '@/shared/lib/websocket'
+import { ConfirmDialog } from '@/shared/ui/confirm-dialog'
+import { toast } from '@/shared/store/toast'
 
 const STATUSES: TaskStatus[] = ['pending', 'ongoing', 'finished', 'cancelled']
 
@@ -83,13 +85,21 @@ export function TaskDetailPage() {
   const [linkLabel, setLinkLabel] = useState('')
   const [linkSending, setLinkSending] = useState(false)
   const [statusHistory, setStatusHistory] = useState<TaskStatusHistoryItem[]>([])
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [confirmDeleteAttachmentId, setConfirmDeleteAttachmentId] = useState<number | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.is_superuser ?? user?.is_staff
   const isCreator = !!task && task.created_by === user?.id
   const canEdit = isCreator || (user?.role_detail?.can_edit_tasks ?? isAdmin)
-  const canDelete = isCreator
+  const canDelete = isCreator || (user?.is_superuser ?? user?.is_staff) || (user?.role_detail?.can_delete_tasks ?? false)
   const canAssign = user?.role_detail?.can_assign_tasks ?? isAdmin
-  const canComment = !!user && !!task && (task.created_by === user.id || (task.assignees && task.assignees.includes(user.id)))
+  const canComment = !!user && !!task && (
+    task.created_by === user.id ||
+    task.assigned_to === user.id ||
+    (task.assignees && task.assignees.includes(user.id)) ||
+    (user.is_staff ?? user.is_superuser)
+  )
 
   const load = async () => {
     if (!id) return
@@ -169,9 +179,12 @@ export function TaskDetailPage() {
     try {
       await tasksApi.update(task.id, { status })
       setTask((prev) => (prev ? { ...prev, status } : null))
+      toast.success(`Status changed to ${status}`)
       window.dispatchEvent(new CustomEvent('taskflow-overdue-refresh'))
       tasksApi.statusHistory(task.id).then(setStatusHistory).catch(() => {})
-    } catch {}
+    } catch {
+      toast.error('Failed to update status')
+    }
   }
 
   const handlePriorityChange = async (priority: TaskPriority) => {
@@ -275,19 +288,41 @@ export function TaskDetailPage() {
   }
 
   const handleDeleteAttachment = async (attId: number) => {
-    if (!confirm('Delete this attachment?')) return
-    try {
-      await attachmentsApi.delete(attId)
-      setAttachments((prev) => prev.filter((a) => a.id !== attId))
-    } catch {}
+    setConfirmDeleteAttachmentId(attId)
   }
 
-  const handleDelete = async () => {
-    if (!task || !confirm('Delete this task?')) return
+  const confirmDeleteAttachment = async () => {
+    if (confirmDeleteAttachmentId === null) return
+    setDeleteLoading(true)
+    try {
+      await attachmentsApi.delete(confirmDeleteAttachmentId)
+      setAttachments((prev) => prev.filter((a) => a.id !== confirmDeleteAttachmentId))
+      toast.success('Attachment deleted')
+    } catch {
+      toast.error('Failed to delete attachment')
+    } finally {
+      setDeleteLoading(false)
+      setConfirmDeleteAttachmentId(null)
+    }
+  }
+
+  const handleDelete = () => {
+    setConfirmDeleteOpen(true)
+  }
+
+  const confirmDeleteTask = async () => {
+    if (!task) return
+    setDeleteLoading(true)
     try {
       await tasksApi.delete(task.id)
+      toast.success('Task deleted')
       navigate('/tasks', { replace: true })
-    } catch {}
+    } catch {
+      toast.error('Failed to delete task')
+    } finally {
+      setDeleteLoading(false)
+      setConfirmDeleteOpen(false)
+    }
   }
 
   if (loading) {
@@ -727,6 +762,28 @@ export function TaskDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Confirm delete task */}
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+        title="Delete task?"
+        description="This action cannot be undone. The task and all its attachments, comments, and links will be permanently deleted."
+        confirmLabel="Delete task"
+        loading={deleteLoading}
+        onConfirm={confirmDeleteTask}
+      />
+
+      {/* Confirm delete attachment */}
+      <ConfirmDialog
+        open={confirmDeleteAttachmentId !== null}
+        onOpenChange={(open) => { if (!open) setConfirmDeleteAttachmentId(null) }}
+        title="Delete attachment?"
+        description="This file will be permanently removed."
+        confirmLabel="Delete"
+        loading={deleteLoading}
+        onConfirm={confirmDeleteAttachment}
+      />
     </div>
   )
 }

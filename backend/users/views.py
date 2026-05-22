@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.exceptions import ValidationError
 from .models import User, Role
 from .serializers import (
@@ -150,3 +151,19 @@ class RoleListView(generics.ListAPIView):
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class LogoutView(APIView):
+    """Blacklist the supplied refresh token on logout."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        refresh_token = request.data.get("refresh")
+        if refresh_token:
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+            except Exception:
+                pass  # Already invalid or blacklisted — that's fine
+        return Response({"detail": "Logged out."}, status=status.HTTP_204_NO_CONTENT)
